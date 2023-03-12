@@ -12,5 +12,5 @@ pluginManagement {
     }
 }
 
-rootProject.name = "KotlinScriptGUI"
+rootProject.name = "KotlinScriptEditor"
 
