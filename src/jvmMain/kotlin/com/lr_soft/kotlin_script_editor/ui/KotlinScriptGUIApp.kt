@@ -6,6 +6,6 @@ import androidx.compose.runtime.Composable
 @Composable
 fun KotlinScriptEditorApp() {
     MaterialTheme {
-        EditorRoute()
+        EditorScreen()
     }
 }

@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.lr_soft.kotlin_script_editor.model.CompilationError
 
 @Composable
-fun EditorRoute(
+fun EditorScreen(
     viewModel: EditorViewModel = rememberSaveable { EditorViewModel() }
 ) {
     EditorScreen(

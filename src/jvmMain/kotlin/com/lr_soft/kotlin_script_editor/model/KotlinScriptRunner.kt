@@ -44,12 +44,11 @@ class KotlinScriptRunner(
         process: Process,
         lineOutputChannel: Channel<String>
     ) = withContext(Dispatchers.IO) {
-        val inputStream = process.inputStream
-        val bufferedReader = inputStream.bufferedReader()
+        val bufferedReader = process.inputStream.bufferedReader()
         while (true) {
             try {
-                while (inputStream.available() == 0) {
-                    delay(INPUT_STREAM_CHECK_PERIODITY_MS)
+                while (!bufferedReader.ready()) {
+                    delay(INPUT_STREAM_CHECK_PERIODICITY_MS)
                 }
                 val line = bufferedReader.readLine()
                 lineOutputChannel.send(line + "\n")
@@ -66,7 +65,7 @@ class KotlinScriptRunner(
     class AlreadyRunningException : Exception("Already running")
 
     private companion object Delays {
-        const val INPUT_STREAM_CHECK_PERIODITY_MS = 10L
+        const val INPUT_STREAM_CHECK_PERIODICITY_MS = 10L
         const val PROGRAM_FINISH_DELAY_MS = 100L
     }
 }

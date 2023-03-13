@@ -23,7 +23,7 @@ class KotlinScriptRunnerTest {
     @TempDir
     lateinit var tempDir: File
     private lateinit var kotlinScriptRunner: KotlinScriptRunner
-    private val lineOutputChannel = Channel<String>(Channel.UNLIMITED)
+    private val outputChannel = Channel<String>(Channel.UNLIMITED)
 
     @BeforeEach
     fun setUp() {
@@ -32,21 +32,20 @@ class KotlinScriptRunnerTest {
 
     @Test
     fun testHelloWorld() = runBlocking {
-        kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorld, lineOutputChannel)
-        assertEquals("Hello world!\n", lineOutputChannel.joinToString())
+        kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorld, outputChannel)
+        assertEquals("Hello world!\n", outputChannel.joinToString())
     }
 
     @Test
     fun testHelloWorldWithoutNewline() = runBlocking {
-        kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorldWithoutNewline, lineOutputChannel)
-        assertEquals("Hello world!\n", lineOutputChannel.joinToString())
+        kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorldWithoutNewline, outputChannel)
+        assertEquals("Hello world!\n", outputChannel.joinToString())
     }
 
     @Test
     fun testCompilationError() = runBlocking {
         try {
-            kotlinScriptRunner.runCode(KotlinScriptSamples.compilationError, lineOutputChannel)
-            println("Output:\n${lineOutputChannel.joinToString()}")
+            kotlinScriptRunner.runCode(KotlinScriptSamples.compilationError, outputChannel)
             fail("Should throw CompilationFailedException!")
         } catch (e: KotlinScriptRunner.CompilationFailedException) {
             assertEquals(1, e.compilationErrors.size)
@@ -57,17 +56,17 @@ class KotlinScriptRunnerTest {
 
     @Test
     fun testReturnCode() = runBlocking {
-        assertEquals(0, kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorld, lineOutputChannel))
-        assertEquals(123, kotlinScriptRunner.runCode(KotlinScriptSamples.returnCode123, lineOutputChannel))
+        assertEquals(0, kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorld, outputChannel))
+        assertEquals(123, kotlinScriptRunner.runCode(KotlinScriptSamples.returnCode123, outputChannel))
     }
 
     @Test
     fun testSleep() = runBlocking {
         val codeJob = launch {
-            kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorldPause, lineOutputChannel)
+            kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorldPause, outputChannel)
         }
         delay(100)
-        val helloLine = lineOutputChannel.receive()
+        val helloLine = outputChannel.receive()
         assertEquals("Hello\n", helloLine)
         codeJob.cancelAndJoin()
     }
@@ -75,12 +74,12 @@ class KotlinScriptRunnerTest {
     @Test
     fun testAlreadyRunningException() = runBlocking {
         val helloWorldPauseJob = launch {
-            kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorldPause, lineOutputChannel)
+            kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorldPause, outputChannel)
         }
         delay(100)
 
         try {
-            kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorld, lineOutputChannel)
+            kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorld, outputChannel)
             fail("Should throw ProgramAlreadyRunningException")
         } catch (_: KotlinScriptRunner.AlreadyRunningException) {}
 
