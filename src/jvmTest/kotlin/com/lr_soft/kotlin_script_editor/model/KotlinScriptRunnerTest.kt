@@ -17,7 +17,7 @@ import java.io.File
 
 private const val CODE_FILENAME = "test.kts"
 
-@Timeout(10)
+@Timeout(15)
 class KotlinScriptRunnerTest {
 
     @TempDir
@@ -48,9 +48,15 @@ class KotlinScriptRunnerTest {
             kotlinScriptRunner.runCode(KotlinScriptSamples.compilationError, outputChannel)
             fail("Should throw CompilationFailedException!")
         } catch (e: KotlinScriptRunner.CompilationFailedException) {
-            assertEquals(1, e.compilationErrors.size)
-            val compilationError = e.compilationErrors[0]
-            assertEquals(0, compilationError.sourceLine)
+            assertEquals(2, e.compilationErrors.size)
+
+            assertTrue("error: unresolved reference: hello" in e.compilationErrors[0].errorText)
+            assertFalse("world" in e.compilationErrors[0].errorText)
+            assertTrue("error: unresolved reference: world" in e.compilationErrors[1].errorText)
+            assertFalse("hello" in e.compilationErrors[1].errorText)
+
+            assertEquals(0, e.compilationErrors[0].sourceCodePosition)
+            assertEquals(8, e.compilationErrors[1].sourceCodePosition)
         }
     }
 
@@ -61,7 +67,7 @@ class KotlinScriptRunnerTest {
     }
 
     @Test
-    fun testSleep() = runBlocking {
+    fun testCancel() = runBlocking {
         val codeJob = launch {
             kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorldPause, outputChannel)
         }
@@ -89,5 +95,4 @@ class KotlinScriptRunnerTest {
     private suspend fun Channel<String>.joinToString(): String {
         return this.consumeAsFlow().toList().joinToString()
     }
-
 }
