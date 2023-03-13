@@ -19,6 +19,9 @@ kotlin {
     jvm {
         jvmToolchain(11)
         withJava()
+        testRuns["test"].executionTask.configure {
+            useJUnitPlatform()
+        }
     }
     sourceSets {
         val jvmMain by getting {

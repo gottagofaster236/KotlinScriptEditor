@@ -17,7 +17,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.lr_soft.kotlin_script_editor.model.CodeError
+import com.lr_soft.kotlin_script_editor.model.CompilationError
 
 @Composable
 fun EditorRoute(
@@ -36,7 +36,7 @@ fun EditorScreen(
     uiState: EditorUiState,
     onEditorTextUpdated: (String) -> Unit,
     runOrStopProgram: () -> Unit,
-    onErrorClicked: (CodeError) -> Unit,
+    onErrorClicked: (CompilationError) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -59,7 +59,7 @@ fun EditorScreen(
 fun EditorScreenContent(
     uiState: EditorUiState,
     onEditorTextUpdated: (String) -> Unit,
-    onErrorClicked: (CodeError) -> Unit,
+    onErrorClicked: (CompilationError) -> Unit,
     modifier: Modifier
 ) {
     Column(modifier = modifier) {
@@ -131,7 +131,7 @@ fun OutputPanel(
 @Composable
 private fun LastReturnCodePanel(lastReturnCode: Int) {
     EditorPanelContainer(
-        title = "Last return code: 0",
+        title = "Last return code: $lastReturnCode",
         modifier = Modifier.fillMaxWidth(),
         content = {}
     )
@@ -139,8 +139,8 @@ private fun LastReturnCodePanel(lastReturnCode: Int) {
 
 @Composable
 fun ErrorsPanel(
-    errorsList: List<CodeError>,
-    onErrorClicked: (CodeError) -> Unit,
+    errorsList: List<CompilationError>,
+    onErrorClicked: (CompilationError) -> Unit,
     modifier: Modifier
 ) {
     EditorPanelContainer(
@@ -155,7 +155,7 @@ fun ErrorsPanel(
             LazyColumn {
                 items(
                     items = errorsList,
-                    itemContent = { item: CodeError ->
+                    itemContent = { item: CompilationError ->
                         Button(onClick = { onErrorClicked(item) }) {
                             Text(item.errorText)
                         }
