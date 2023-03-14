@@ -158,7 +158,7 @@ fun ErrorsPanel(
     modifier: Modifier
 ) {
     EditorPanelContainer(
-        title = "Errors",
+        title = "Compilation errors",
         modifier = modifier
     ) {
         Column(

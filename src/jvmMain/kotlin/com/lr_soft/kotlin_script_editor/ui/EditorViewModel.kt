@@ -46,7 +46,11 @@ class EditorViewModel(
         }
         val lastTab = editorTextFieldValue.text.indexOfLast(isTab)
         val newSelection = TextRange(lastTab + tabsCount * 4)
-        return TextFieldValue(editorTextFieldValue.text.replace("\t", "    "), newSelection)
+        return TextFieldValue(fixTabs(editorTextFieldValue.text), newSelection)
+    }
+
+    private fun fixTabs(code: String): String {
+        return code.replace("\t", "    ")
     }
 
     fun runOrStopProgram() {
@@ -98,7 +102,7 @@ class EditorViewModel(
         val outputJob = launch(Dispatchers.IO) {
             for (line in outputChannel) {
                 synchronized(uiStateLock) {
-                    uiState = uiState.copy(outputText = uiState.outputText + line)
+                    uiState = uiState.copy(outputText = uiState.outputText + fixTabs(line))
                 }
             }
         }
