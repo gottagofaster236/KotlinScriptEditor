@@ -39,7 +39,7 @@ class KotlinScriptRunnerTest {
     @Test
     fun testHelloWorldWithoutNewline() = runBlocking {
         kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorldWithoutNewline, outputChannel)
-        assertEquals("Hello world!\n", outputChannel.joinToString())
+        assertEquals("Hello world!", outputChannel.joinToString())
     }
 
     @Test
@@ -70,7 +70,11 @@ class KotlinScriptRunnerTest {
         val codeJob = launch {
             kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorldPause, outputChannel)
         }
-        val helloLine = outputChannel.receive()
+        var helloLine = outputChannel.receive()
+        delay(100)
+        outputChannel.tryReceive().getOrNull()?.let {
+            helloLine += it
+        }
         assertEquals("Hello\n", helloLine)
         codeJob.cancelAndJoin()
     }

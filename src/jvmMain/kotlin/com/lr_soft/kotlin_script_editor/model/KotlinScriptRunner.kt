@@ -4,9 +4,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import java.io.File
 import java.io.IOException
-import java.lang.IndexOutOfBoundsException
-import java.lang.NumberFormatException
-import java.lang.StringBuilder
 import java.util.concurrent.atomic.AtomicBoolean
 
 class KotlinScriptRunner(private val codeSaveFile: File) {
@@ -32,8 +29,9 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
             kotlinProcess = ProcessBuilder("kotlinc", "-script", codeSaveFile.absolutePath).start()
             interactWithKotlinProcess(kotlinProcess, lineOutputChannel, code)
         } finally {
-            // Make sure the input and output streams are properly closed.
-            kotlinProcess?.destroyForcibly()
+            if (kotlinProcess != null) {
+                stopKotlinProcess(kotlinProcess)
+            }
             isRunning.set(false)
             lineOutputChannel.close()
         }
@@ -59,15 +57,26 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
     ) = withContext(Dispatchers.IO) {
         hadStdoutOutput.set(false)
         process.inputStream.bufferedReader().use { bufferedReader ->
+            fun canReadNextSymbol(): Boolean {
+                // A direct call to `readLine()` will block indefinitely if we terminate the Kotlin process.
+                return bufferedReader.ready() || !process.isAlive
+            }
+
             while (true) {
                 try {
-                    while (!bufferedReader.ready() && process.isAlive) {
-                        // A direct call to `readLine()` will block indefinitely if we terminate the Kotlin process.
+                    while (!canReadNextSymbol()) {
                         delay(INPUT_STREAM_CHECK_PERIODICITY_MS)
                     }
-                    val line = bufferedReader.readLine() ?: break
+                    val nextChunk = StringBuilder()
+                    while (canReadNextSymbol() && nextChunk.length < MAX_CHUNK_LENGTH) {
+                        val nextChar = bufferedReader.read()
+                        if (nextChar == -1) {
+                            return@use
+                        }
+                        nextChunk.append(nextChar.toChar())
+                    }
                     hadStdoutOutput.set(true)
-                    lineOutputChannel.send(line + "\n")
+                    lineOutputChannel.send(nextChunk.toString())
                 } catch (_: IOException) {
                     break
                 }
@@ -157,6 +166,20 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         return result
     }
 
+    private fun stopKotlinProcess(kotlinProcess: Process) {
+        if (!System.getProperty("os.name").startsWith("Windows") && kotlinProcess.isAlive) {
+            /**
+             * Assume we're on POSIX. For some reason, destroyForcibly() doesn't kill
+             * the child Java process, so we have to do it ourselves.
+             */
+            Runtime.getRuntime().exec(
+                arrayOf("sh", "-c", "kill \$(ps -o pid= --ppid ${kotlinProcess.pid()})")
+            ).waitFor()
+        }
+        // Make sure the input and output streams are properly closed.
+        kotlinProcess.destroyForcibly()
+    }
+
     class CompilationFailedException(
         val compilationErrors: List<CompilationError>
     ) : Exception("Compilation error")
@@ -165,5 +188,6 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
 
     private companion object {
         const val INPUT_STREAM_CHECK_PERIODICITY_MS = 10L
+        const val MAX_CHUNK_LENGTH = 65536
     }
 }

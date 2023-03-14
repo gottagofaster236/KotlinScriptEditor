@@ -8,5 +8,5 @@ object KotlinScriptSamples {
     const val compilationError = """hello()
 world()"""
     const val returnCode123 = """System.exit(123)"""
-    const val helloWorldPause = """println("Hello"); Thread.sleep(100000); println("world")"""
+    const val helloWorldPause = """println("Hello"); Thread.sleep(10000); println("world")"""
 }
