@@ -4,6 +4,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -110,26 +111,18 @@ fun CodePanel(
             focusRequester.requestFocus()
             scrollState.animateScrollTo((scrollState.maxValue * focusScrollPercentage).toInt())
         }
-        LaunchedEffect(scrollState.maxValue) {
-            scrollState.scrollTo(scrollState.maxValue)
-        }
+        autoscrollToEnd(scrollState)
 
-        Row {
+        VerticalScrollbar(rememberScrollbarAdapter(scrollState)) {
             TextField(
                 value = textFieldValue,
                 onValueChange = onEditorTextUpdated,
                 textStyle = TextStyle.Default.copy(fontFamily = FontFamily.Monospace, fontSize = 17.sp),
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1f)
+                    .fillMaxSize()
                     .padding(start = 5.dp, top = 5.dp, end = 0.dp, bottom = 5.dp)
                     .verticalScroll(scrollState)
                     .focusRequester(focusRequester)
-            )
-
-            VerticalScrollbar(
-                modifier = Modifier.fillMaxHeight().padding(3.dp),
-                adapter = rememberScrollbarAdapter(scrollState)
             )
         }
     }
@@ -145,27 +138,28 @@ fun OutputPanel(
         modifier = modifier
     ) {
         val scrollState = rememberScrollState()
-        Row {
-            Box(Modifier.fillMaxHeight().weight(1f)) {
-                SelectionContainer(Modifier.fillMaxSize()) {
-                    Text(
-                        text = text,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(editorBackgroundColor())
-                            .padding(start = 10.dp, top = 10.dp, end = 0.dp, bottom = 10.dp)
-                            .verticalScroll(scrollState),
-                        fontSize = 17.sp
-                    )
-                }
+        autoscrollToEnd(scrollState)
+        VerticalScrollbar(rememberScrollbarAdapter(scrollState)) {
+            SelectionContainer(Modifier.fillMaxSize()) {
+                Text(
+                    text = text,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(editorBackgroundColor())
+                        .padding(start = 10.dp, top = 10.dp, end = 0.dp, bottom = 10.dp)
+                        .verticalScroll(scrollState),
+                    fontSize = 17.sp
+                )
             }
-
-            VerticalScrollbar(
-                modifier = Modifier.fillMaxHeight().padding(3.dp),
-                adapter = rememberScrollbarAdapter(scrollState)
-            )
         }
+    }
+}
+
+@Composable
+fun autoscrollToEnd(scrollState: ScrollState) {
+    LaunchedEffect(scrollState.maxValue) {
+        scrollState.scrollTo(scrollState.maxValue)
     }
 }
 
@@ -198,32 +192,43 @@ fun ErrorsPanel(
                 modifier = Modifier.padding(5.dp),
                 fontSize = 17.sp
             )
-
             Divider()
+            ErrorsList(errorsList, onErrorClicked, Modifier.fillMaxWidth())
+        }
+    }
+}
 
-            LazyColumn(
-                modifier = Modifier.padding(horizontal = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(
-                    items = errorsList,
-                    itemContent = { item: CompilationError ->
-                        Card(
-                            modifier = modifier
-                                .fillMaxWidth()
-                                .clickable { onErrorClicked(item) },
-                            elevation = 5.dp,
-                            backgroundColor = editorBackgroundColor()
-                        ) {
-                            Text(
-                                text = item.errorText,
-                                fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.padding(10.dp)
-                            )
-                        }
+@Composable
+fun ErrorsList(
+    errorsList: List<CompilationError>,
+    onErrorClicked: (CompilationError) -> Unit,
+    modifier: Modifier
+) {
+    val lazyListState = rememberLazyListState()
+    VerticalScrollbar(rememberScrollbarAdapter(lazyListState)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            state = lazyListState
+        ) {
+            items(
+                items = errorsList,
+                itemContent = { item: CompilationError ->
+                    Card(
+                        modifier = modifier
+                            .fillMaxWidth()
+                            .clickable { onErrorClicked(item) },
+                        elevation = 5.dp,
+                        backgroundColor = editorBackgroundColor()
+                    ) {
+                        Text(
+                            text = item.errorText,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.padding(10.dp)
+                        )
                     }
-                )
-            }
+                }
+            )
         }
     }
 }
@@ -292,5 +297,24 @@ fun EditorPanelContainer(
             )
             content()
         }
+    }
+}
+
+@Composable
+fun VerticalScrollbar(
+    scrollbarAdapter: ScrollbarAdapter,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Row(modifier) {
+        Box(
+            Modifier.fillMaxHeight().weight(1f)
+        ) {
+            content()
+        }
+        VerticalScrollbar(
+            modifier = Modifier.fillMaxHeight().padding(3.dp),
+            adapter = scrollbarAdapter
+        )
     }
 }
