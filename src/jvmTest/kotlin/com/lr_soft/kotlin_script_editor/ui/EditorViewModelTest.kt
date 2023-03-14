@@ -4,6 +4,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import com.lr_soft.kotlin_script_editor.model.CompilationError
 import com.lr_soft.kotlin_script_editor.model.KotlinScriptRunner
+import com.lr_soft.kotlin_script_editor.model.highlightKotlinSyntax
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.test.*
@@ -34,9 +35,13 @@ class EditorViewModelTest {
     @Test
     fun testOnEditorTextUpdated() {
         assert(editorViewModel.uiState.editorTextFieldValue == TextFieldValue())
-        val newValue = TextFieldValue("abc", TextRange(1, 2))
-        editorViewModel.onEditorTextUpdated(newValue)
-        assertEquals(newValue, editorViewModel.uiState.editorTextFieldValue)
+
+        val testCode = "val while abc"
+        val newEditorText = TextFieldValue(testCode, TextRange(1, 2))
+        editorViewModel.onEditorTextUpdated(newEditorText)
+        val keywordsColor = editorViewModel.uiState.editorTextFieldValue.annotatedString.spanStyles[0].item.color
+        val expected = newEditorText.copy(annotatedString = highlightKotlinSyntax(testCode, keywordsColor))
+        assertEquals(expected, editorViewModel.uiState.editorTextFieldValue)
 
         editorViewModel.onEditorTextUpdated(
             TextFieldValue("abc\t\tabc")

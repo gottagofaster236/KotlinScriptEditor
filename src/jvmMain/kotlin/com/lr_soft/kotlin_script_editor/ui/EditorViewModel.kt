@@ -3,10 +3,12 @@ package com.lr_soft.kotlin_script_editor.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import com.lr_soft.kotlin_script_editor.model.CompilationError
 import com.lr_soft.kotlin_script_editor.model.KotlinScriptRunner
+import com.lr_soft.kotlin_script_editor.model.highlightKotlinSyntax
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 
@@ -32,8 +34,12 @@ class EditorViewModel(
     private val uiStateLock = Object()
 
     fun onEditorTextUpdated(editorTextFieldValue: TextFieldValue) {
+        var result = fixTabs(editorTextFieldValue)
+        result = result.copy(
+            annotatedString = highlightKotlinSyntax(result.text, KEYWORDS_COLOR)
+        )
         uiState = uiState.copy(
-            editorTextFieldValue = fixTabs(editorTextFieldValue)
+            editorTextFieldValue = result
         )
     }
 
@@ -128,5 +134,9 @@ class EditorViewModel(
                 focusScrollPercentage = focusScrollPercentage
             )
         }
+    }
+
+    private companion object {
+        val KEYWORDS_COLOR = Color(255, 153, 0)
     }
 }
