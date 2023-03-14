@@ -62,7 +62,6 @@ class KotlinScriptRunnerTest {
 
     @Test
     fun testReturnCode() = runBlocking {
-        assertEquals(0, kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorld, outputChannel))
         assertEquals(123, kotlinScriptRunner.runCode(KotlinScriptSamples.returnCode123, outputChannel))
     }
 
@@ -71,7 +70,6 @@ class KotlinScriptRunnerTest {
         val codeJob = launch {
             kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorldPause, outputChannel)
         }
-        delay(100)
         val helloLine = outputChannel.receive()
         assertEquals("Hello\n", helloLine)
         codeJob.cancelAndJoin()

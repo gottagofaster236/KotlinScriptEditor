@@ -5,27 +5,30 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lr_soft.kotlin_script_editor.model.CompilationError
 
 @Composable
-fun EditorScreen(
-    viewModel: EditorViewModel = rememberSaveable { EditorViewModel() }
-) {
+fun EditorScreen(viewModel: EditorViewModel) {
     EditorScreen(
         uiState = viewModel.uiState,
-        onEditorTextUpdated = viewModel::onEditorTextChanged,
+        onEditorTextUpdated = viewModel::onEditorTextUpdated,
         runOrStopProgram = viewModel::runOrStopProgram,
         onErrorClicked = viewModel::onErrorClicked,
     )
@@ -34,7 +37,7 @@ fun EditorScreen(
 @Composable
 fun EditorScreen(
     uiState: EditorUiState,
-    onEditorTextUpdated: (String) -> Unit,
+    onEditorTextUpdated: (TextFieldValue) -> Unit,
     runOrStopProgram: () -> Unit,
     onErrorClicked: (CompilationError) -> Unit,
 ) {
@@ -58,7 +61,7 @@ fun EditorScreen(
 @Composable
 fun EditorScreenContent(
     uiState: EditorUiState,
-    onEditorTextUpdated: (String) -> Unit,
+    onEditorTextUpdated: (TextFieldValue) -> Unit,
     onErrorClicked: (CompilationError) -> Unit,
     modifier: Modifier
 ) {
@@ -67,13 +70,13 @@ fun EditorScreenContent(
             modifier = Modifier.fillMaxWidth().weight(1f)
         ) {
             CodePanel(
-                text = uiState.editorText,
+                textFieldValue = uiState.editorTextFieldValue,
                 onEditorTextUpdated = onEditorTextUpdated,
                 modifier = Modifier.weight(1f).fillMaxHeight()
             )
             Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                 OutputPanel(
-                    text = uiState.editorText + "test",
+                    text = uiState.outputText,
                     modifier = Modifier.weight(1f).fillMaxWidth()
                 )
                 LastReturnCodePanel(lastReturnCode = uiState.lastReturnCode)
@@ -90,20 +93,24 @@ fun EditorScreenContent(
 
 @Composable
 fun CodePanel(
-    text: String,
-    onEditorTextUpdated: (String) -> Unit,
+    textFieldValue: TextFieldValue,
+    onEditorTextUpdated: (TextFieldValue) -> Unit,
     modifier: Modifier
 ) {
     EditorPanelContainer(
         title = "Code",
         modifier = modifier
     ) {
+        val focusRequester = remember { FocusRequester() }
         TextField(
-            value = text,
+            value = textFieldValue,
             onValueChange = onEditorTextUpdated,
             textStyle = TextStyle.Default.copy(fontFamily = FontFamily.Monospace, fontSize = 17.sp),
-            modifier = Modifier.fillMaxSize().padding(5.dp)
+            modifier = Modifier.fillMaxSize().padding(5.dp).focusRequester(focusRequester)
         )
+        LaunchedEffect(textFieldValue) {
+            focusRequester.requestFocus()
+        }
     }
 }
 
@@ -116,15 +123,17 @@ fun OutputPanel(
         title = "Output",
         modifier = modifier
     ) {
-        Text(
-            text = text,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 17.sp,
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(10.dp)
-        )
+        SelectionContainer {
+            Text(
+                text = text,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 17.sp,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(10.dp)
+            )
+        }
     }
 }
 
@@ -150,7 +159,7 @@ fun ErrorsPanel(
         Column(
             modifier = modifier.fillMaxSize()
         ) {
-            Text("${errorsList.size} errors")
+            Text("${errorsList.size} error(s)")
 
             LazyColumn {
                 items(

@@ -18,10 +18,6 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
 
     private val hadStdoutOutput = AtomicBoolean(false)
 
-    private val codeSaveAbsolutePath: String by lazy {
-        codeSaveFile.absolutePath
-    }
-
     suspend fun runCode(
         code: String,
         lineOutputChannel: Channel<String>
@@ -33,7 +29,7 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         var kotlinProcess: Process? = null
         try {
             codeSaveFile.writeText(code)
-            kotlinProcess = ProcessBuilder("kotlinc", "-script", codeSaveAbsolutePath).start()
+            kotlinProcess = ProcessBuilder("kotlinc", "-script", codeSaveFile.absolutePath).start()
             interactWithKotlinProcess(kotlinProcess, lineOutputChannel, code)
         } finally {
             // Make sure the input and output streams are properly closed.
@@ -110,7 +106,7 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         // Iterating up to `stderrLines.size` to add the last portion of lines.
         for (lineIndex in 0..stderrLines.size) {
             val stderrLine: String? = stderrLines.getOrNull(lineIndex)
-            val newError = stderrLine?.startsWith(codeSaveAbsolutePath) != false
+            val newError = stderrLine?.contains("${codeSaveFile.name}:") != false
             if (newError && currentErrorText.isNotEmpty()) {
                 errors.add(CompilationError(currentErrorText.toString(), currentSourceCodePosition))
             }
@@ -138,8 +134,8 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         try {
             // Kotlin compiler errors are in format "{filePath}:{lineNumber}:{linePosition}: error: ...".
             val (lineNumber, linePosition) = stderrLine
-                .substring(codeSaveAbsolutePath.length + 1)
-                .split(":", limit = 3)
+                .split(":", limit = 4)
+                .drop(1)
                 .take(2)
                 .map(String::toInt)
                 .map { i -> i - 1 }  // Convert to 0-indexed indexes.

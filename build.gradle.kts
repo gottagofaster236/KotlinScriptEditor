@@ -1,4 +1,3 @@
-import org.jetbrains.compose.compose
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -24,15 +23,21 @@ kotlin {
         }
     }
     sourceSets {
+        @Suppress("UNUSED_VARIABLE")
         val jvmMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(compose.materialIconsExtended)
             }
         }
+        @Suppress("UNUSED_VARIABLE")
         val jvmTest by getting {
             dependencies {
                 implementation("org.junit.jupiter:junit-jupiter:5.8.1")
+                implementation("org.mockito:mockito-core:5.2.0")
+                implementation("org.mockito:mockito-junit-jupiter:5.2.0")
+                implementation("org.mockito:mockito-inline:5.2.0")
+                implementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
             }
         }
     }
