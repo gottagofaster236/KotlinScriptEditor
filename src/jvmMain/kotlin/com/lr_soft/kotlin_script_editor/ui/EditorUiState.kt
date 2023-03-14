@@ -11,4 +11,5 @@ data class EditorUiState(
     val errorList: List<CompilationError> = emptyList(),
     val isProgramRunning: Boolean = false,
     val lastReturnCode: Int = 0,
+    val timesEditorFocusRequested: Int = 0,
 )

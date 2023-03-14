@@ -1,6 +1,7 @@
 package com.lr_soft.kotlin_script_editor.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
@@ -67,11 +69,12 @@ fun EditorScreenContent(
 ) {
     Column(modifier = modifier) {
         Row(
-            modifier = Modifier.fillMaxWidth().weight(1f)
+            modifier = Modifier.fillMaxWidth().weight(2f)
         ) {
             CodePanel(
                 textFieldValue = uiState.editorTextFieldValue,
                 onEditorTextUpdated = onEditorTextUpdated,
+                timesEditorFocusRequested = uiState.timesEditorFocusRequested,
                 modifier = Modifier.weight(1f).fillMaxHeight()
             )
             Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
@@ -86,7 +89,7 @@ fun EditorScreenContent(
         ErrorsPanel(
             errorsList = uiState.errorList,
             onErrorClicked = onErrorClicked,
-            modifier = Modifier.height(150.dp).fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().weight(1f)
         )
     }
 }
@@ -95,6 +98,7 @@ fun EditorScreenContent(
 fun CodePanel(
     textFieldValue: TextFieldValue,
     onEditorTextUpdated: (TextFieldValue) -> Unit,
+    timesEditorFocusRequested: Int,
     modifier: Modifier
 ) {
     EditorPanelContainer(
@@ -108,7 +112,7 @@ fun CodePanel(
             textStyle = TextStyle.Default.copy(fontFamily = FontFamily.Monospace, fontSize = 17.sp),
             modifier = Modifier.fillMaxSize().padding(5.dp).focusRequester(focusRequester)
         )
-        LaunchedEffect(textFieldValue) {
+        LaunchedEffect(timesEditorFocusRequested) {
             focusRequester.requestFocus()
         }
     }
@@ -132,6 +136,7 @@ fun OutputPanel(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(10.dp)
+                    .background(editorBackgroundColor())
             )
         }
     }
@@ -157,16 +162,37 @@ fun ErrorsPanel(
         modifier = modifier
     ) {
         Column(
-            modifier = modifier.fillMaxSize()
+            modifier = modifier.fillMaxSize().padding(5.dp)
         ) {
-            Text("${errorsList.size} error(s)")
+            Text(
+                text = "${errorsList.size} error" +
+                        (if (errorsList.size != 1) "s" else "") +
+                        (if (errorsList.isNotEmpty()) ":" else ""),
+                modifier = Modifier.padding(5.dp),
+                fontSize = 17.sp
+            )
 
-            LazyColumn {
+            Divider()
+
+            LazyColumn(
+                modifier = Modifier.padding(horizontal = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 items(
                     items = errorsList,
                     itemContent = { item: CompilationError ->
-                        Button(onClick = { onErrorClicked(item) }) {
-                            Text(item.errorText)
+                        Card(
+                            modifier = modifier
+                                .fillMaxWidth()
+                                .clickable { onErrorClicked(item) },
+                            elevation = 5.dp,
+                            backgroundColor = editorBackgroundColor()
+                        ) {
+                            Text(
+                                text = item.errorText,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.padding(10.dp)
+                            )
                         }
                     }
                 )
@@ -176,11 +202,24 @@ fun ErrorsPanel(
 }
 
 @Composable
+private fun editorBackgroundColor(): Color {
+    val color1 = MaterialTheme.colors.onSurface
+    val percent1 = 0.12f
+    val color2 = MaterialTheme.colors.surface
+    val percent2 = 1 - percent1
+    return Color(
+        red = color1.red * percent1 + color2.red * percent2,
+        green = color1.green * percent1 + color2.green * percent2,
+        blue = color1.blue * percent1 + color2.blue * percent2
+    )
+}
+
+@Composable
 fun EditorTopBar(
     isProgramRunning: Boolean,
     runOrStopProgram: () -> Unit
 ) {
-    val playStopIcon = if (isProgramRunning) {
+    val runStopIcon = if (isProgramRunning) {
         Icons.Default.Stop
     } else {
         Icons.Default.PlayArrow
@@ -190,19 +229,19 @@ fun EditorTopBar(
             Text("Kotlin Script Editor")
         },
         actions = {
-            val sizeModifier = Modifier.size(30.dp)
+            val sizeModifier = Modifier.size(35.dp)
             IconButton(
                 onClick = runOrStopProgram,
                 modifier = sizeModifier
             ) {
                 Icon(
-                    imageVector = playStopIcon,
+                    imageVector = runStopIcon,
                     contentDescription = "Start or stop the script",
                     modifier = sizeModifier,
                     tint = MaterialTheme.colors.onPrimary
                 )
             }
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(11.dp))
         }
     )
 }
@@ -215,14 +254,14 @@ fun EditorPanelContainer(
 ) {
     Card(
         modifier = modifier.padding(10.dp),
-        elevation = 10.dp
+        elevation = 15.dp
     ) {
         Column {
             Text(
                 text = title,
                 modifier = Modifier.background(MaterialTheme.colors.primary).fillMaxWidth().padding(6.dp),
                 color = MaterialTheme.colors.onPrimary,
-                fontSize = 16.sp
+                fontSize = 17.sp
             )
             content()
         }

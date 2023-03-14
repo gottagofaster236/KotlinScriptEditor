@@ -10,7 +10,7 @@ import com.lr_soft.kotlin_script_editor.ui.KotlinScriptEditorApp
 fun main() = application {
     Window(
         title = "KotlinScriptEditor",
-        state = rememberWindowState(size = DpSize(1200.dp, 800.dp)),
+        state = rememberWindowState(size = DpSize(1300.dp, 900.dp)),
         onCloseRequest = ::exitApplication
     ) {
         KotlinScriptEditorApp()

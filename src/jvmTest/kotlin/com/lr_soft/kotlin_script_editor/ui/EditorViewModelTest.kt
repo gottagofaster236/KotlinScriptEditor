@@ -37,6 +37,17 @@ class EditorViewModelTest {
         val newValue = TextFieldValue("abc", TextRange(1, 2))
         editorViewModel.onEditorTextUpdated(newValue)
         assertEquals(newValue, editorViewModel.uiState.editorTextFieldValue)
+
+        editorViewModel.onEditorTextUpdated(
+            TextFieldValue("abc\t\tabc")
+        )
+        assertEquals(
+            TextFieldValue(
+                "abc        abc",
+                TextRange(12)
+            ),
+            editorViewModel.uiState.editorTextFieldValue
+        )
     }
 
     @Test
@@ -72,8 +83,11 @@ class EditorViewModelTest {
     fun testOnErrorClicked() {
         editorViewModel.onEditorTextUpdated(TextFieldValue("abc"))
         assertEquals(TextRange(0), editorViewModel.uiState.editorTextFieldValue.selection)
+        assertEquals(0, editorViewModel.uiState.timesEditorFocusRequested)
+
         editorViewModel.onErrorClicked(CompilationError("error", 2))
         assertEquals(TextRange(2), editorViewModel.uiState.editorTextFieldValue.selection)
+        assertEquals(1, editorViewModel.uiState.timesEditorFocusRequested)
     }
 
     @Test

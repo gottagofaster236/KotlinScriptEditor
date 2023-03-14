@@ -32,7 +32,21 @@ class EditorViewModel(
     private val uiStateLock = Object()
 
     fun onEditorTextUpdated(editorTextFieldValue: TextFieldValue) {
-        uiState = uiState.copy(editorTextFieldValue = editorTextFieldValue)
+        uiState = uiState.copy(
+            editorTextFieldValue = fixTabs(editorTextFieldValue)
+        )
+    }
+
+    // https://github.com/JetBrains/compose-multiplatform/issues/615
+    private fun fixTabs(editorTextFieldValue: TextFieldValue): TextFieldValue {
+        val isTab: (Char) -> Boolean = { it == '\t' }
+        val tabsCount = editorTextFieldValue.text.count(isTab)
+        if (tabsCount == 0) {
+            return editorTextFieldValue
+        }
+        val lastTab = editorTextFieldValue.text.indexOfLast(isTab)
+        val newSelection = TextRange(lastTab + tabsCount * 4)
+        return TextFieldValue(editorTextFieldValue.text.replace("\t", "    "), newSelection)
     }
 
     fun runOrStopProgram() {
@@ -102,7 +116,8 @@ class EditorViewModel(
             uiState = uiState.copy(
                 editorTextFieldValue = uiState.editorTextFieldValue.copy(
                     selection = TextRange(sourceCodePosition)
-                )
+                ),
+                timesEditorFocusRequested = uiState.timesEditorFocusRequested + 1
             )
         }
     }
