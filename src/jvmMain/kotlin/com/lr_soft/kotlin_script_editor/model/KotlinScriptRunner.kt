@@ -4,6 +4,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
 import java.util.concurrent.atomic.AtomicBoolean
 
 class KotlinScriptRunner(private val codeSaveFile: File) {
@@ -13,11 +14,13 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
      */
     private val isRunning = AtomicBoolean(false)
 
-    private val hadStdoutOutput = AtomicBoolean(false)
+    private var hadStdoutOutput = false
+
+    private val stderr = StringBuilder()
 
     suspend fun runCode(
         code: String,
-        lineOutputChannel: Channel<String>
+        outputChannel: Channel<String>
     ): Int = withContext(Dispatchers.IO) {
         if (!isRunning.compareAndSet(false, true)) {
             throw AlreadyRunningException()
@@ -27,36 +30,59 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         try {
             codeSaveFile.writeText(code)
             kotlinProcess = ProcessBuilder("kotlinc", "-script", codeSaveFile.absolutePath).start()
-            interactWithKotlinProcess(kotlinProcess, lineOutputChannel, code)
+            interactWithKotlinProcess(kotlinProcess, outputChannel, code)
         } finally {
-            if (kotlinProcess != null) {
+            kotlinProcess?.let {
                 stopKotlinProcess(kotlinProcess)
             }
             isRunning.set(false)
-            lineOutputChannel.close()
+            outputChannel.close()
         }
     }
 
     private suspend fun interactWithKotlinProcess(
         kotlinProcess: Process,
-        lineOutputChannel: Channel<String>,
+        outputChannel: Channel<String>,
         code: String
     ) = withContext(Dispatchers.IO) {
+        stderr.clear()
+
         val outputForwardJob = launch {
-            forwardOutputToChannel(kotlinProcess, lineOutputChannel)
+            hadStdoutOutput = false
+            readStreamInChunks(
+                process = kotlinProcess,
+                stream = kotlinProcess.inputStream,
+                onNextChunk = {
+                    outputChannel.send(it)
+                    hadStdoutOutput = true
+                }
+            )
         }
+
+        val errorForwardJob = launch {
+            readStreamInChunks(
+                process = kotlinProcess,
+                stream = kotlinProcess.errorStream,
+                onNextChunk = {
+                    outputChannel.send(it)
+                    stderr.append(it)
+                }
+            )
+        }
+
         val returnCode = runInterruptible { kotlinProcess.waitFor() }
         outputForwardJob.join()
+        errorForwardJob.join()
         checkForCompilationErrors(kotlinProcess, code)
         returnCode
     }
 
-    private suspend fun forwardOutputToChannel(
+    private suspend fun readStreamInChunks(
         process: Process,
-        lineOutputChannel: Channel<String>
+        stream: InputStream,
+        onNextChunk: suspend (String) -> Unit,
     ) = withContext(Dispatchers.IO) {
-        hadStdoutOutput.set(false)
-        process.inputStream.bufferedReader().use { bufferedReader ->
+        stream.bufferedReader().use { bufferedReader ->
             fun canReadNextSymbol(): Boolean {
                 // A direct call to `readLine()` will block indefinitely if we terminate the Kotlin process.
                 return bufferedReader.ready() || !process.isAlive
@@ -75,8 +101,7 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
                         }
                         nextChunk.append(nextChar.toChar())
                     }
-                    hadStdoutOutput.set(true)
-                    lineOutputChannel.send(nextChunk.toString())
+                    onNextChunk(nextChunk.toString())
                 } catch (_: IOException) {
                     break
                 }
@@ -84,29 +109,21 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         }
     }
 
-    private fun checkForCompilationErrors(
-        kotlinProcess: Process,
-        code: String
-    ) {
+    private fun checkForCompilationErrors(kotlinProcess: Process, code: String) {
         if (kotlinProcess.exitValue() != 1) {
             return
         }
-        if (hadStdoutOutput.get()) {
+        if (hadStdoutOutput) {
             return
         }
-        val stderrLines = kotlinProcess.errorStream.bufferedReader().use {
-            it.readLines()
-        }
+        val stderrLines = stderr.toString().lines()
         if (stderrLines.isEmpty()) {
             return
         }
         parseAndThrowCompilationErrors(code, stderrLines)
     }
 
-    private fun parseAndThrowCompilationErrors(
-        code: String,
-        stderrLines: List<String>
-    ) {
+    private fun parseAndThrowCompilationErrors(code: String, stderrLines: List<String>) {
         val errors = mutableListOf<CompilationError>()
         val codeLineStartPositions = getLineStartPositions(code)
         val currentErrorText = StringBuilder()

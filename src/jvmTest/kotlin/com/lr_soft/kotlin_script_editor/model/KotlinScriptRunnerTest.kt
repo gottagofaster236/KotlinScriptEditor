@@ -80,6 +80,12 @@ class KotlinScriptRunnerTest {
     }
 
     @Test
+    fun testCodeException() = runBlocking {
+        kotlinScriptRunner.runCode(KotlinScriptSamples.runtimeException, outputChannel)
+        assertTrue("java.lang.NullPointerException" in outputChannel.joinToString())
+    }
+
+    @Test
     fun testAlreadyRunningException() = runBlocking {
         val helloWorldPauseJob = launch {
             kotlinScriptRunner.runCode(KotlinScriptSamples.helloWorldPause, outputChannel)

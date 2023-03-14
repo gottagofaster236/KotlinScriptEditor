@@ -9,4 +9,5 @@ object KotlinScriptSamples {
 world()"""
     const val returnCode123 = """System.exit(123)"""
     const val helloWorldPause = """println("Hello"); Thread.sleep(10000); println("world")"""
+    const val runtimeException = "throw NullPointerException()"
 }
