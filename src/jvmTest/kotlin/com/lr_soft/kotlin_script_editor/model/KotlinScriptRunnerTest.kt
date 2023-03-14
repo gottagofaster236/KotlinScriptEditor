@@ -55,8 +55,10 @@ class KotlinScriptRunnerTest {
             assertTrue("error: unresolved reference: world" in e.compilationErrors[1].errorText)
             assertFalse("hello" in e.compilationErrors[1].errorText)
 
+            assertEquals(0, e.compilationErrors[0].sourceCodeLineNumber)
             assertEquals(0, e.compilationErrors[0].sourceCodePosition)
-            assertEquals(8, e.compilationErrors[1].sourceCodePosition)
+            assertEquals(2, e.compilationErrors[1].sourceCodeLineNumber)
+            assertEquals(9, e.compilationErrors[1].sourceCodePosition)
         }
     }
 

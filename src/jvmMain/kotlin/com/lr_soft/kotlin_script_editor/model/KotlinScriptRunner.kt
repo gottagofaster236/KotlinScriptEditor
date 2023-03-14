@@ -127,21 +127,30 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         val errors = mutableListOf<CompilationError>()
         val codeLineStartPositions = getLineStartPositions(code)
         val currentErrorText = StringBuilder()
-        var currentSourceCodePosition = CompilationError.NO_SOURCE_CODE_POSITION
+        var currentSourceCodeLineNumber = CompilationError.NO_POSITION
+        var currentSourceCodePosition = CompilationError.NO_POSITION
 
         // Iterating up to `stderrLines.size` to add the last portion of lines.
         for (lineIndex in 0..stderrLines.size) {
             val stderrLine: String? = stderrLines.getOrNull(lineIndex)
             val newError = stderrLine?.contains("${codeSaveFile.name}:") != false
             if (newError && currentErrorText.isNotEmpty()) {
-                errors.add(CompilationError(currentErrorText.toString(), currentSourceCodePosition))
+                errors.add(
+                    CompilationError(
+                        currentErrorText.toString(),
+                        currentSourceCodeLineNumber,
+                        currentSourceCodePosition
+                    )
+                )
             }
             if (stderrLine == null) {
                 break
             }
             if (newError) {
                 currentErrorText.clear()
-                currentSourceCodePosition = getErrorSourceCodePosition(stderrLine, codeLineStartPositions)
+                val lineAndPosition = getErrorSourceCodeLineAndPosition(stderrLine, codeLineStartPositions)
+                currentSourceCodeLineNumber = lineAndPosition.first
+                currentSourceCodePosition = lineAndPosition.second
             }
 
             if (currentErrorText.isNotEmpty()) {
@@ -153,10 +162,10 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         throw CompilationFailedException(errors)
     }
 
-    private fun getErrorSourceCodePosition(
+    private fun getErrorSourceCodeLineAndPosition(
         stderrLine: String,
         codeLineStartPositions: List<Int>
-    ): Int {
+    ): Pair<Int, Int> {
         try {
             // Kotlin compiler errors are in format "{filePath}:{lineNumber}:{linePosition}: error: ...".
             val (lineNumber, linePosition) = stderrLine
@@ -166,11 +175,11 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
                 .map(String::toInt)
                 .map { i -> i - 1 }  // Convert to 0-indexed indexes.
 
-            return codeLineStartPositions[lineNumber] + linePosition
+            return lineNumber to codeLineStartPositions[lineNumber] + linePosition
         } catch (_: IndexOutOfBoundsException) {
         } catch (_: NumberFormatException) {}
 
-        return CompilationError.NO_SOURCE_CODE_POSITION
+        return CompilationError.NO_POSITION to CompilationError.NO_POSITION
     }
 
     private fun getLineStartPositions(code: String): List<Int> {

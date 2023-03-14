@@ -5,8 +5,7 @@ object KotlinScriptSamples {
     const val helloWorld = """println("Hello world!")"""
     const val helloWorldWithoutNewline = """print("Hello world!")"""
 
-    const val compilationError = """hello()
-world()"""
+    const val compilationError = "hello()\n\nworld()"
     const val returnCode123 = """System.exit(123)"""
     const val helloWorldPause = """println("Hello"); Thread.sleep(10000); println("world")"""
     const val runtimeException = "throw NullPointerException()"

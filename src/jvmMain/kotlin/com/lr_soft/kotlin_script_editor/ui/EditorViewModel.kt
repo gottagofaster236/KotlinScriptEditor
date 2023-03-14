@@ -113,15 +113,19 @@ class EditorViewModel(
 
     fun onErrorClicked(error: CompilationError) {
         val sourceCodePosition = error.sourceCodePosition.takeUnless {
-            it == CompilationError.NO_SOURCE_CODE_POSITION
+            it == CompilationError.NO_POSITION
         } ?: return
+
+        val linesNumber = uiState.editorTextFieldValue.text.count { it == '\n' }
+        val focusScrollPercentage = error.sourceCodeLineNumber.toFloat() / linesNumber
 
         synchronized(uiStateLock) {
             uiState = uiState.copy(
                 editorTextFieldValue = uiState.editorTextFieldValue.copy(
                     selection = TextRange(sourceCodePosition)
                 ),
-                timesEditorFocusRequested = uiState.timesEditorFocusRequested + 1
+                timesEditorFocusRequested = uiState.timesEditorFocusRequested + 1,
+                focusScrollPercentage = focusScrollPercentage
             )
         }
     }

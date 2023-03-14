@@ -84,10 +84,13 @@ class EditorViewModelTest {
         editorViewModel.onEditorTextUpdated(TextFieldValue("abc"))
         assertEquals(TextRange(0), editorViewModel.uiState.editorTextFieldValue.selection)
         assertEquals(0, editorViewModel.uiState.timesEditorFocusRequested)
+        assertEquals(0f, editorViewModel.uiState.focusScrollPercentage)
 
-        editorViewModel.onErrorClicked(CompilationError("error", 2))
-        assertEquals(TextRange(2), editorViewModel.uiState.editorTextFieldValue.selection)
+        editorViewModel.onEditorTextUpdated(TextFieldValue("1\n2\n3\n4\n"))
+        editorViewModel.onErrorClicked(CompilationError("error", 3, 5))
+        assertEquals(TextRange(5), editorViewModel.uiState.editorTextFieldValue.selection)
         assertEquals(1, editorViewModel.uiState.timesEditorFocusRequested)
+        assertEquals(3f / 4, editorViewModel.uiState.focusScrollPercentage)
     }
 
     @Test
@@ -145,8 +148,8 @@ class EditorViewModelTest {
     @Test
     fun testErrorList() = runBlocking {
         val errorList = listOf(
-            CompilationError("error1", 123),
-            CompilationError("error2", 321)
+            CompilationError("error1", 321, 123),
+            CompilationError("error2", 123, 321)
         )
         kotlinScriptRunner.stub {
             onBlocking { runCode(any(), any()) } doSuspendableAnswer {

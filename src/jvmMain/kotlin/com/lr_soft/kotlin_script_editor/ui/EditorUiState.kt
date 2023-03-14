@@ -12,4 +12,5 @@ data class EditorUiState(
     val isProgramRunning: Boolean = false,
     val lastReturnCode: Int = 0,
     val timesEditorFocusRequested: Int = 0,
+    val focusScrollPercentage: Float = 0f,
 )
