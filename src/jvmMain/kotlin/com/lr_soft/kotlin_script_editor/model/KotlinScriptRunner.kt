@@ -29,10 +29,10 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         var kotlinProcess: Process? = null
         try {
             codeSaveFile.writeText(code)
-            if (isWindows()) {
-                kotlinProcess = ProcessBuilder("cmd", "/c", "kotlinc -script \"${codeSaveFile.absolutePath}\"").start()
+            kotlinProcess = if (isWindows()) {
+                ProcessBuilder("cmd", "/c", "kotlinc -script \"${codeSaveFile.absolutePath}\"").start()
             } else {
-                kotlinProcess = ProcessBuilder("kotlinc", "-script", codeSaveFile.absolutePath).start()
+                ProcessBuilder("kotlinc", "-script", codeSaveFile.absolutePath).start()
             }
             interactWithKotlinProcess(kotlinProcess, outputChannel, code)
         } finally {
@@ -99,11 +99,15 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
                     }
                     val nextChunk = StringBuilder()
                     while (canReadNextSymbol() && nextChunk.length < MAX_CHUNK_LENGTH) {
-                        val nextChar = bufferedReader.read()
-                        if (nextChar == -1) {
+                        val nextRead = bufferedReader.read()
+                        if (nextRead == -1) {
                             return@use
                         }
-                        nextChunk.append(nextChar.toChar())
+                        val char = nextRead.toChar()
+                        if (char == '\r') {
+                            continue
+                        }
+                        nextChunk.append(char)
                     }
                     onNextChunk(nextChunk.toString())
                 } catch (_: IOException) {
@@ -137,7 +141,7 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         // Iterating up to `stderrLines.size` to add the last portion of lines.
         for (lineIndex in 0..stderrLines.size) {
             val stderrLine: String? = stderrLines.getOrNull(lineIndex)
-            val isNewError = stderrLine?.contains("${codeSaveFile.name}:") != false
+            val isNewError = stderrLine?.contains(compilationErrorSearchString) != false
             if (isNewError && currentErrorText.isNotEmpty()) {
                 // Add the previous error.
                 errors.add(
@@ -173,7 +177,9 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
     ): Pair<Int, Int> {
         try {
             // Kotlin compiler errors are in format "{filePath}:{lineNumber}:{linePosition}: error: ...".
+            val startPosition = stderrLine.indexOf(compilationErrorSearchString)
             val (lineNumber, linePosition) = stderrLine
+                .substring(startPosition)
                 .split(":", limit = 4)
                 .subList(1, 3)
                 .map(String::toInt)
@@ -194,6 +200,10 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
             }
         }
         return result
+    }
+
+    private val compilationErrorSearchString by lazy {
+        "${codeSaveFile.name}:"
     }
 
     // https://stackoverflow.com/a/10124625/6120487
