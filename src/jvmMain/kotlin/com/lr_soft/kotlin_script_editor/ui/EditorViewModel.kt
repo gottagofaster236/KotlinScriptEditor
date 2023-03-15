@@ -60,22 +60,18 @@ class EditorViewModel(
     }
 
     fun runOrStopProgram() {
-        if (uiState.isProgramRunning) {
-            val currentRunCodeJob = runCodeJob!!
-            scope.launch(Dispatchers.IO) {
-                currentRunCodeJob.cancelAndJoin()
-                synchronized(uiStateLock) {
-                    if (runCodeJob != currentRunCodeJob) {
-                        return@synchronized
-                    }
-                    uiState = uiState.copy(isProgramRunning = false)
-                    runCodeJob = null
-                }
-            }
-            return
+        if (!uiState.isProgramRunning) {
+            runProgram()
+        } else {
+            stopProgram()
         }
+    }
 
+    private fun runProgram() {
         synchronized(uiStateLock) {
+            if (uiState.isProgramRunning) {
+                return
+            }
             uiState = uiState.copy(
                 isProgramRunning = true,
                 outputText = "",
@@ -83,6 +79,20 @@ class EditorViewModel(
             )
             runCodeJob = scope.launch(Dispatchers.IO) {
                 runCode()
+            }
+        }
+    }
+
+    private fun stopProgram() {
+        val currentRunCodeJob = runCodeJob ?: return
+        scope.launch(Dispatchers.IO) {
+            currentRunCodeJob.cancelAndJoin()
+            synchronized(uiStateLock) {
+                if (runCodeJob != currentRunCodeJob) {
+                    return@synchronized
+                }
+                uiState = uiState.copy(isProgramRunning = false)
+                runCodeJob = null
             }
         }
     }

@@ -16,7 +16,7 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
 
     private var hadStdoutOutput = false
 
-    private val stderr = StringBuilder()
+    private val stderrOutput = StringBuilder()
 
     suspend fun runCode(
         code: String,
@@ -33,7 +33,7 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
             interactWithKotlinProcess(kotlinProcess, outputChannel, code)
         } finally {
             kotlinProcess?.let {
-                stopKotlinProcess(kotlinProcess)
+                stopKotlinProcess(it)
             }
             isRunning.set(false)
             outputChannel.close()
@@ -45,7 +45,7 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         outputChannel: Channel<String>,
         code: String
     ) = withContext(Dispatchers.IO) {
-        stderr.clear()
+        stderrOutput.clear()
 
         val outputForwardJob = launch {
             hadStdoutOutput = false
@@ -65,7 +65,7 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
                 stream = kotlinProcess.errorStream,
                 onNextChunk = {
                     outputChannel.send(it)
-                    stderr.append(it)
+                    stderrOutput.append(it)
                 }
             )
         }
@@ -116,7 +116,7 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         if (hadStdoutOutput) {
             return
         }
-        val stderrLines = stderr.toString().lines()
+        val stderrLines = stderrOutput.toString().lines()
         if (stderrLines.isEmpty()) {
             return
         }
@@ -133,8 +133,9 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         // Iterating up to `stderrLines.size` to add the last portion of lines.
         for (lineIndex in 0..stderrLines.size) {
             val stderrLine: String? = stderrLines.getOrNull(lineIndex)
-            val newError = stderrLine?.contains("${codeSaveFile.name}:") != false
-            if (newError && currentErrorText.isNotEmpty()) {
+            val isNewError = stderrLine?.contains("${codeSaveFile.name}:") != false
+            if (isNewError && currentErrorText.isNotEmpty()) {
+                // Add the previous error.
                 errors.add(
                     CompilationError(
                         currentErrorText.toString(),
@@ -146,7 +147,7 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
             if (stderrLine == null) {
                 break
             }
-            if (newError) {
+            if (isNewError) {
                 currentErrorText.clear()
                 val lineAndPosition = getErrorSourceCodeLineAndPosition(stderrLine, codeLineStartPositions)
                 currentSourceCodeLineNumber = lineAndPosition.first
@@ -170,10 +171,9 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
             // Kotlin compiler errors are in format "{filePath}:{lineNumber}:{linePosition}: error: ...".
             val (lineNumber, linePosition) = stderrLine
                 .split(":", limit = 4)
-                .drop(1)
-                .take(2)
+                .subList(1, 3)
                 .map(String::toInt)
-                .map { i -> i - 1 }  // Convert to 0-indexed indexes.
+                .map { i -> i - 1 }  // Convert to 0-indexed.
 
             return lineNumber to codeLineStartPositions[lineNumber] + linePosition
         } catch (_: IndexOutOfBoundsException) {
@@ -195,8 +195,8 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
     private fun stopKotlinProcess(kotlinProcess: Process) {
         if (!System.getProperty("os.name").startsWith("Windows") && kotlinProcess.isAlive) {
             /**
-             * Assume we're on POSIX. For some reason, destroyForcibly() doesn't kill
-             * the child Java process, so we have to do it ourselves.
+             * If it's not Windows, assume we're on POSIX. For some reason,
+             * `destroyForcibly()` doesn't kill the child Java process, so we have to do it ourselves.
              */
             Runtime.getRuntime().exec(
                 arrayOf("sh", "-c", "kill \$(ps -o pid= --ppid ${kotlinProcess.pid()})")

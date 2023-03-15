@@ -213,23 +213,32 @@ fun ErrorsList(
         ) {
             items(
                 items = errorsList,
-                itemContent = { item: CompilationError ->
-                    Card(
-                        modifier = modifier
-                            .fillMaxWidth()
-                            .clickable { onErrorClicked(item) },
-                        elevation = 5.dp,
-                        backgroundColor = editorBackgroundColor()
-                    ) {
-                        Text(
-                            text = item.errorText,
-                            fontFamily = FontFamily.Monospace,
-                            modifier = Modifier.padding(10.dp)
-                        )
-                    }
+                itemContent = { compilationError: CompilationError ->
+                    ErrorItem(compilationError, { onErrorClicked(compilationError) }, modifier)
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun ErrorItem(
+    compilationError: CompilationError,
+    onErrorClicked: () -> Unit,
+    modifier: Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onErrorClicked),
+        elevation = 5.dp,
+        backgroundColor = editorBackgroundColor()
+    ) {
+        Text(
+            text = compilationError.errorText,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.padding(10.dp)
+        )
     }
 }
 
