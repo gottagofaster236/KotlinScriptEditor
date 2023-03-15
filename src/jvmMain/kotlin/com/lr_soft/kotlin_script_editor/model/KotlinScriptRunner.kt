@@ -29,7 +29,11 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
         var kotlinProcess: Process? = null
         try {
             codeSaveFile.writeText(code)
-            kotlinProcess = ProcessBuilder("kotlinc", "-script", codeSaveFile.absolutePath).start()
+            if (isWindows()) {
+                kotlinProcess = ProcessBuilder("cmd", "/c", "kotlinc -script \"${codeSaveFile.absolutePath}\"").start()
+            } else {
+                kotlinProcess = ProcessBuilder("kotlinc", "-script", codeSaveFile.absolutePath).start()
+            }
             interactWithKotlinProcess(kotlinProcess, outputChannel, code)
         } finally {
             kotlinProcess?.let {
@@ -193,17 +197,25 @@ class KotlinScriptRunner(private val codeSaveFile: File) {
     }
 
     private fun stopKotlinProcess(kotlinProcess: Process) {
-        if (!System.getProperty("os.name").startsWith("Windows") && kotlinProcess.isAlive) {
+        if (kotlinProcess.isAlive) {
             /**
              * If it's not Windows, assume we're on POSIX. For some reason,
              * `destroyForcibly()` doesn't kill the child Java process, so we have to do it ourselves.
              */
-            Runtime.getRuntime().exec(
-                arrayOf("sh", "-c", "kill \$(ps -o pid= --ppid ${kotlinProcess.pid()})")
-            ).waitFor()
+            if (isWindows()) {
+                TODO()
+            } else {
+                Runtime.getRuntime().exec(
+                    arrayOf("sh", "-c", "kill \$(ps -o pid= --ppid ${kotlinProcess.pid()})")
+                ).waitFor()
+            }
         }
         // Make sure the input and output streams are properly closed.
         kotlinProcess.destroyForcibly()
+    }
+    
+    private fun isWindows(): Boolean {
+        return System.getProperty("os.name").startsWith("Windows")
     }
 
     class CompilationFailedException(

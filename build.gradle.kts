@@ -5,7 +5,7 @@ plugins {
     id("org.jetbrains.compose")
 }
 
-group = "com.lr_soft.kotlin_script_gui"
+group = "com.lr_soft.kotlin_script_editor"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -45,7 +45,7 @@ kotlin {
 
 compose.desktop {
     application {
-        mainClass = "MainKt"
+        mainClass = "com.lr_soft.kotlin_script_editor.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "KotlinScriptEditor"
