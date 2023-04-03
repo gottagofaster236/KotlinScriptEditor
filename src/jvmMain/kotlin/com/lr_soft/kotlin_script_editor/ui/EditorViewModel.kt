@@ -38,9 +38,11 @@ class EditorViewModel(
         result = result.copy(
             annotatedString = highlightKotlinSyntax(result.text, KEYWORDS_COLOR)
         )
-        uiState = uiState.copy(
-            editorTextFieldValue = result
-        )
+        synchronized(uiStateLock) {
+            uiState = uiState.copy(
+                editorTextFieldValue = result
+            )
+        }
     }
 
     // https://github.com/JetBrains/compose-multiplatform/issues/615
